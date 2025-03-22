@@ -3,7 +3,7 @@ using UnityEngine;
 public class CameraFollow : MonoBehaviour
 {
     public Transform player; // Objek yang akan diikuti (Player)
-    public Vector3 offset ;
+    Vector3 offset;
 
     void Start()
     {
