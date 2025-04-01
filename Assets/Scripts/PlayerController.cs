@@ -2,71 +2,101 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    private Animator mAnimator;
-    private Rigidbody rb;
+    private Animator animator;
 
-    [SerializeField] private float jumpForce = 13f;  // Tinggi lompatan
-    [SerializeField] private float forwardJumpForce = 40f;  // Jarak lompat ke depan
-    [SerializeField] private LayerMask groundMask;   // Untuk mendeteksi tanah
+    private float[] lanes = { -5.3f, 0.7f, 6.7f }; // Posisi jalur tetap
+    private int currentLane = 1; // Mulai dari jalur tengah
+    private float laneSwitchSpeed = 10f;
+    private Vector3 targetPosition;
 
-    private bool isGrounded;
-    private float lastJumpTime;
-    private float groundCheckDelay = 0.2f; // Waktu tunda sebelum bisa lompat lagi
+    private bool isSwitchingLane = false;
 
     void Start()
     {
-        mAnimator = GetComponent<Animator>();
-        rb = GetComponent<Rigidbody>();
-
-        // Pastikan Root Motion aktif di Animator
-        mAnimator.applyRootMotion = true;
+        animator = GetComponent<Animator>();
+        targetPosition = new Vector3(lanes[currentLane], transform.position.y, transform.position.z);
     }
 
     void Update()
     {
-        // Periksa apakah karakter menyentuh tanah (dengan sedikit delay agar lebih natural)
-        if (Time.time - lastJumpTime > groundCheckDelay)
-        {
-            isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.1f, groundMask);
-        }
+        HandleJumpAndSlide();
+        HandleLaneSwitch();
+        MoveToTarget();
+        KeepPlayerOnLane(); // Pastikan player tetap di jalur
+    }
 
-        // Kontrol lompat
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+    void HandleJumpAndSlide()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            Jump();
+            animator.SetTrigger("jump");
         }
-
-        // Kontrol animasi lainnya
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            mAnimator.SetTrigger("slide");
-        }
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            mAnimator.SetTrigger("strafe_left");
-        }
-        if (Input.GetKeyDown(KeyCode.D))
-        {
-            mAnimator.SetTrigger("strafe_right");
-        }
-        if (Input.GetKeyDown(KeyCode.Z))
-        {
-            mAnimator.SetTrigger("dizzy");
+            animator.SetTrigger("slide");
         }
     }
 
-    void Jump()
+    void HandleLaneSwitch()
     {
-        mAnimator.SetTrigger("jump");
+        if (isSwitchingLane) return; // Mencegah perpindahan saat masih bergerak
 
-        // Simpan waktu lompat agar tidak bisa lompat terus-menerus
-        lastJumpTime = Time.time;
+        if (IsPlayingAnimation("RunLookBack") || IsPlayingAnimation("idle"))
+        {
+            return;
+        }
 
-        // Reset kecepatan vertikal dan horizontal agar tidak ada sisa kecepatan sebelumnya
-        rb.linearVelocity = Vector3.zero;
+        if (Input.GetKeyDown(KeyCode.A) && currentLane > 0)
+        {
+            currentLane--;
+            isSwitchingLane = true;
+        }
+        else if (Input.GetKeyDown(KeyCode.D) && currentLane < lanes.Length - 1)
+        {
+            currentLane++;
+            isSwitchingLane = true;
+        }
 
-        // Tambahkan gaya ke atas (melompat) dan ke depan (maju)
-        Vector3 jumpDirection = (Vector3.up * jumpForce) + (transform.forward * forwardJumpForce);
-        rb.AddForce(jumpDirection, ForceMode.Impulse);
+        targetPosition = new Vector3(lanes[currentLane], transform.position.y, transform.position.z);
+    }
+
+    void MoveToTarget()
+    {
+        transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * laneSwitchSpeed);
+
+        if (Vector3.Distance(transform.position, targetPosition) < 0.1f)
+        {
+            transform.position = targetPosition;
+            isSwitchingLane = false;
+        }
+    }
+
+    void KeepPlayerOnLane()
+    {
+        // Pastikan posisi pemain tetap dalam jalur yang valid
+        float closestLane = lanes[0];
+        float minDistance = Mathf.Abs(transform.position.x - lanes[0]);
+
+        for (int i = 1; i < lanes.Length; i++)
+        {
+            float distance = Mathf.Abs(transform.position.x - lanes[i]);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestLane = lanes[i];
+            }
+        }
+
+        // Jika posisi terlalu jauh dari jalur mana pun, paksa kembali ke jalur terdekat
+        if (minDistance > 1f) // Batas aman dari jalur
+        {
+            transform.position = new Vector3(closestLane, transform.position.y, transform.position.z);
+            currentLane = System.Array.IndexOf(lanes, closestLane); // Update currentLane agar tetap sesuai
+        }
+    }
+
+    bool IsPlayingAnimation(string animationName)
+    {
+        return animator.GetCurrentAnimatorStateInfo(0).IsName(animationName);
     }
 }

@@ -1,25 +1,53 @@
+using System.Collections;
 using UnityEngine;
 
 public class Coin : MonoBehaviour
 {
-    public float turnSpeed = 90f;
+    public float collectionRadius = 2.5f;
+    public float animationDuration = 0.15f;
+    public float curveHeight = 2f;
 
-    void OnTriggerEnter(Collider other)
+    private GameObject backpack;
+    private bool isAnimating = false;
+
+    void Start()
     {
-        if (!other.gameObject.CompareTag("Player"))
-        {
-            return;
-        }
-
-        GameManager.inst.IncrementScore(); // Panggil IncrementScore() 
-
-        Destroy(gameObject);
+        backpack = GameObject.FindGameObjectWithTag("BackPack");
     }
-
 
     void Update()
     {
-        // Memutar koin agar tampak berputar saat melayang
-        transform.Rotate(0, turnSpeed * Time.deltaTime, 0);
+        if (!isAnimating && backpack != null && Vector3.Distance(transform.position, backpack.transform.position) <= collectionRadius)
+        {
+            StartCoroutine(AnimateCoinToBackPack());
+        }
+    }
+
+    private Vector3 CalculateBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
+    {
+        float u = 1 - t;
+        return u * u * p0 + 2 * u * t * p1 + t * t * p2;
+    }
+
+    private IEnumerator AnimateCoinToBackPack()
+    {
+        isAnimating = true;
+        Vector3 startPoint = transform.position;
+        Vector3 staticEndPoint = backpack.transform.position;
+
+        Vector3 midPoint = (startPoint + staticEndPoint) / 2;
+        midPoint.y += curveHeight;
+
+        float elapsedTime = 0.0f;
+        while (elapsedTime < animationDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / animationDuration;
+            transform.position = CalculateBezierPoint(t, startPoint, midPoint, staticEndPoint);
+            yield return null;
+        }
+
+        GameManager.inst.IncrementScore(); // Tambah skor setelah koin sampai ke backpack
+        Destroy(gameObject);
     }
 }
