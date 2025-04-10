@@ -17,11 +17,18 @@ public class Coin : MonoBehaviour
 
     void Update()
     {
-        if (!isAnimating && backpack != null && Vector3.Distance(transform.position, backpack.transform.position) <= collectionRadius)
+        if (isAnimating || backpack == null) return;
+
+        float distance = Vector3.Distance(transform.position, backpack.transform.position);
+        PlayerMagnet playerMagnet = backpack.GetComponent<PlayerMagnet>();
+
+        if ((distance <= collectionRadius) ||
+            (playerMagnet != null && playerMagnet.isMagnetActive && distance <= playerMagnet.magnetRadius))
         {
             StartCoroutine(AnimateCoinToBackPack());
         }
     }
+
 
     private Vector3 CalculateBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
     {

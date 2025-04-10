@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
+
 
 public class GameManager : MonoBehaviour
 {
@@ -8,6 +10,8 @@ public class GameManager : MonoBehaviour
     public static GameManager inst;
 
     public Text scoreText;
+
+ public TMP_Text scoreGameOver;
     public void IncrementScore()
     {
         score++;
@@ -15,6 +19,10 @@ public class GameManager : MonoBehaviour
         if (scoreText != null)
         {
             scoreText.text = "SCORE: " + score;
+        }
+        if (scoreGameOver != null)
+        {
+            scoreGameOver.text = "SCORE: " + score;
         }
         else
         {
@@ -25,16 +33,5 @@ public class GameManager : MonoBehaviour
     void Awake()
     {
         inst = this;
-    }
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
     }
 }

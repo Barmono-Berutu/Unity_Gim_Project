@@ -99,4 +99,5 @@ public class PlayerController : MonoBehaviour
     {
         return animator.GetCurrentAnimatorStateInfo(0).IsName(animationName);
     }
+
 }
