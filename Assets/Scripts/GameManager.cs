@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
 
     public Text scoreText;
 
- public TMP_Text scoreGameOver;
+    public TMP_Text scoreGameOver;
     public void IncrementScore()
     {
         score++;

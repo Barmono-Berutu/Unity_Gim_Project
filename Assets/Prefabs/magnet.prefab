@@ -147,7 +147,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1030466221167702441}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 633038a5e2c92bb4eb1b17a049143b9e, type: 3}
+  m_Script: {fileID: 11500000, guid: 6f76d7e4781731649a5369c4e6465c5c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   magnetDuration: 10

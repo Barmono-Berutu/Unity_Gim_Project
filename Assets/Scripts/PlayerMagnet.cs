@@ -5,13 +5,19 @@ public class PlayerMagnet : MonoBehaviour
 {
     public float magnetRadius = 8f;
     public bool isMagnetActive = false;
+    public MagnetUIController uiController;
+
 
     public void ActivateMagnet(float duration)
     {
-        StartCoroutine(MagnetCoroutine(duration));
+        if (uiController != null)
+            uiController.ShowMagnet(duration);
+
+        StartCoroutine(DeactivateAfter(duration));
     }
 
-    private IEnumerator MagnetCoroutine(float duration)
+
+    IEnumerator DeactivateAfter(float duration)
     {
         isMagnetActive = true;
         yield return new WaitForSeconds(duration);
@@ -20,26 +26,10 @@ public class PlayerMagnet : MonoBehaviour
 
     void Update()
     {
-        if (isMagnetActive)
-        {
-            AttractCoins();
-        }
-    }
+        if (!isMagnetActive) return;
 
-    void AttractCoins()
-    {
-        Collider[] coins = Physics.OverlapSphere(transform.position, magnetRadius);
-        foreach (var coin in coins)
-        {
-            if (coin.CompareTag("Coin"))
-            {
-                coin.transform.position = Vector3.MoveTowards(
-                    coin.transform.position,
-                    transform.position,
-                    10f * Time.deltaTime
-                );
-            }
-        }
+        foreach (var hit in Physics.OverlapSphere(transform.position, magnetRadius))
+            if (hit.CompareTag("Coin"))
+                hit.transform.position = Vector3.MoveTowards(hit.transform.position, transform.position, 10f * Time.deltaTime);
     }
-
 }

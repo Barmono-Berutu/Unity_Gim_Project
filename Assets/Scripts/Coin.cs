@@ -1,60 +1,45 @@
-using System.Collections;
 using UnityEngine;
 
 public class Coin : MonoBehaviour
 {
     public float collectionRadius = 2.5f;
-    public float animationDuration = 0.15f;
-    public float curveHeight = 2f;
 
-    private GameObject backpack;
-    private bool isAnimating = false;
+    private Transform backpack;
+    private AudioSource audioSource;
+    public AudioClip audioCoinCollection;
+
+    private bool isCollected = false; // Untuk mencegah multiple trigger
 
     void Start()
     {
-        backpack = GameObject.FindGameObjectWithTag("BackPack");
+        GameObject backpackObj = GameObject.FindGameObjectWithTag("BackPack");
+        audioSource = GetComponent<AudioSource>();
+        if (backpackObj != null)
+            backpack = backpackObj.transform;
     }
 
     void Update()
     {
-        if (isAnimating || backpack == null) return;
+        if (backpack == null || isCollected) return;
 
-        float distance = Vector3.Distance(transform.position, backpack.transform.position);
-        PlayerMagnet playerMagnet = backpack.GetComponent<PlayerMagnet>();
+        float distance = Vector3.Distance(transform.position, backpack.position);
+        var magnet = backpack.GetComponent<PlayerMagnet>();
 
-        if ((distance <= collectionRadius) ||
-            (playerMagnet != null && playerMagnet.isMagnetActive && distance <= playerMagnet.magnetRadius))
+        float effectiveRadius = (magnet != null && magnet.isMagnetActive)
+            ? Mathf.Max(collectionRadius, magnet.magnetRadius)
+            : collectionRadius;
+
+        if (distance <= effectiveRadius)
         {
-            StartCoroutine(AnimateCoinToBackPack());
+            isCollected = true; // supaya tidak trigger berkali-kali
+            GameManager.inst.IncrementScore();
+
+            // Putar suara pengambilan koin
+            if (audioSource != null && audioCoinCollection != null)
+                audioSource.PlayOneShot(audioCoinCollection);
+
+            // Hancurkan coin setelah suara selesai (delay sedikit atau pakai coroutine)
+            Destroy(gameObject, audioCoinCollection.length); 
         }
-    }
-
-
-    private Vector3 CalculateBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
-    {
-        float u = 1 - t;
-        return u * u * p0 + 2 * u * t * p1 + t * t * p2;
-    }
-
-    private IEnumerator AnimateCoinToBackPack()
-    {
-        isAnimating = true;
-        Vector3 startPoint = transform.position;
-        Vector3 staticEndPoint = backpack.transform.position;
-
-        Vector3 midPoint = (startPoint + staticEndPoint) / 2;
-        midPoint.y += curveHeight;
-
-        float elapsedTime = 0.0f;
-        while (elapsedTime < animationDuration)
-        {
-            elapsedTime += Time.deltaTime;
-            float t = elapsedTime / animationDuration;
-            transform.position = CalculateBezierPoint(t, startPoint, midPoint, staticEndPoint);
-            yield return null;
-        }
-
-        GameManager.inst.IncrementScore(); // Tambah skor setelah koin sampai ke backpack
-        Destroy(gameObject);
     }
 }

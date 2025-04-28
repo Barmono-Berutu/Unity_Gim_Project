@@ -11,6 +11,9 @@ public class PlayerController : MonoBehaviour
 
     private bool isSwitchingLane = false;
 
+public AudioSource audioSource;
+public AudioClip slidingAudioClip;
+public AudioClip jumpAudioClip;
     void Start()
     {
         animator = GetComponent<Animator>();
@@ -27,13 +30,15 @@ public class PlayerController : MonoBehaviour
 
     void HandleJumpAndSlide()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.W))
         {
             animator.SetTrigger("jump");
+            audioSource.PlayOneShot(jumpAudioClip);
         }
-        if (Input.GetKeyDown(KeyCode.DownArrow))
+        if (Input.GetKeyDown(KeyCode.S))
         {
             animator.SetTrigger("slide");
+            audioSource.PlayOneShot(slidingAudioClip);
         }
     }
 

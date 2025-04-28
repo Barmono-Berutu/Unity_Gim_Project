@@ -3,30 +3,33 @@ using System.Collections.Generic;
 
 public class GroundTile : MonoBehaviour
 {
+    [Header("===[ References ]===")]
     private GroundSpawner groundSpawner;
 
-    [Header("Prefabs")]
+    [Header("===[ Prefabs ]===")]
     public GameObject obstaclePrefab;
     public GameObject obstacleRoad;
     public GameObject coinPrefab;
     public GameObject magnetPrefab;
+    
 
-    [Header("Obstacle Settings")]
-    [Range(1, 5)]
-    public int minEmptyTiles = 3;
+    [Header("===[ Obstacle Settings ]===")]
+    [Range(1, 5)] public int minEmptyTiles = 3;
 
     private static int tilesSinceLastObstacle = 0;
     private static bool firstTile = true;
 
-    private List<int> usedIndices = new List<int>();
-    private HashSet<Vector3> usedPositions = new HashSet<Vector3>();
-
+    [Header("===[ Magnet Settings ]===")]
     private static int tilesSinceLastMagnet = 0;
-    private const int minTilesBetweenMagnets = 10; // misalnya 10 tile
+    private const int minTilesBetweenMagnets = 10;
+
+    private List<int> usedIndices = new();
+    private HashSet<Vector3> usedPositions = new();
 
     private void Start()
     {
         groundSpawner = GameObject.FindFirstObjectByType<GroundSpawner>();
+
         if (groundSpawner == null)
         {
             Debug.LogError("GroundSpawner tidak ditemukan di scene!");
@@ -50,25 +53,18 @@ public class GroundTile : MonoBehaviour
     {
         if (!ShouldSpawnObstacle()) return;
 
-        int maxObstacles = 2; // jumlah maksimum obstacle per tile
-        int obstacleCount = Random.Range(1, maxObstacles + 1);
+        int obstacleCount = 2; // selalu 2 obstacle (satu dari masing-masing prefab)
 
-        for (int i = 0; i < obstacleCount; i++)
-        {
-            if (Random.value > 0.5f)
-            {
-                SpawnObstacle(obstaclePrefab, new int[] { 2, 3, 4 });
-            }
-            else
-            {
-                SpawnObstacle(obstacleRoad, new int[] { 5, 6, 7 });
-            }
-        }
+        // Spawn satu dari obstaclePrefab
+        SpawnObstacle(obstaclePrefab, new int[] { 2, 3, 4 });
+
+        // Spawn satu dari obstacleRoad, tapi pastikan tidak terlalu dekat
+        SpawnObstacle(obstacleRoad, new int[] { 5, 6, 7 });
     }
 
     private void SpawnObstacle(GameObject obstacle, int[] spawnIndices)
     {
-        List<int> availableIndices = new List<int>();
+        List<int> availableIndices = new();
 
         foreach (int index in spawnIndices)
         {
@@ -83,26 +79,37 @@ public class GroundTile : MonoBehaviour
         int chosenIndex = availableIndices[Random.Range(0, availableIndices.Count)];
         Transform spawnPoint = transform.GetChild(chosenIndex);
 
-        Instantiate(obstacle, spawnPoint.position, Quaternion.identity, transform);
+        Vector3 spawnPosition = spawnPoint.position;
 
+        if (IsPositionNearOther(spawnPosition, 1.5f)) return;
+
+        Instantiate(obstacle, spawnPosition, Quaternion.identity, transform);
         usedIndices.Add(chosenIndex);
-        usedPositions.Add(spawnPoint.position);
+        usedPositions.Add(spawnPosition);
     }
 
     private void SpawnCoins()
     {
         Vector3[] lanes = {
-            new Vector3(-5.3f, 1f, 0),
-            new Vector3(0.7f, 1f, 0),
-            new Vector3(6.7f, 1f, 0)
+            new Vector3(-5.3f, 2f, 4f),
+            new Vector3(0.7f, 2f, 4f),
+            new Vector3(6.7f, 2f, 4f)
         };
 
-        Vector3 lanePosition = lanes[Random.Range(0, lanes.Length)];
+        Vector3 lane = lanes[Random.Range(0, lanes.Length)];
         int coinCount = Random.Range(3, 7);
+        float zStartOffset = 6f; // makin depan dari obstacle
 
         for (int i = 0; i < coinCount; i++)
         {
-            Vector3 spawnPosition = transform.position + lanePosition + new Vector3(0, 0, i * 2f);
+            Vector3 spawnPosition = new Vector3(
+                lane.x,
+                lane.y,
+                transform.position.z + zStartOffset + i * 2f
+            );
+
+            if (IsPositionNearOther(spawnPosition, 1f)) continue;
+
             Instantiate(coinPrefab, spawnPosition, Quaternion.Euler(-90, 0, 0), transform);
             usedPositions.Add(spawnPosition);
         }
@@ -113,34 +120,23 @@ public class GroundTile : MonoBehaviour
         tilesSinceLastMagnet++;
 
         if (tilesSinceLastMagnet < minTilesBetweenMagnets) return;
+        if (Random.value >= 0.3f) return;
 
-        if (Random.value >= 0.3f) return; // 30% chance
-
-        // Pilihan posisi lokal berdasarkan data JSON (relative ke parent/track tile)
-        Vector3[] localMagnetPositions = new Vector3[]
-        {
-        new Vector3(-5.93f, 0.63f, 8.77f), // kiri
-        new Vector3(0.16f, 0.63f, 8.77f),  // tengah
-        new Vector3(6.12f, 0.63f, 8.77f),  // kanan
+        Vector3[] localMagnetPositions = {
+            new Vector3(-5.93f, 0.63f, 8.77f),
+            new Vector3(0.16f, 0.63f, 8.77f),
+            new Vector3(6.12f, 0.63f, 8.77f)
         };
 
-        // Ambil posisi acak dari ketiga posisi di atas
         Vector3 localMagnetPosition = localMagnetPositions[Random.Range(0, localMagnetPositions.Length)];
-        Vector3 worldMagnetPosition = transform.TransformPoint(localMagnetPosition); // Ubah jadi world position
+        Vector3 worldMagnetPosition = transform.TransformPoint(localMagnetPosition);
 
-        foreach (var used in usedPositions)
-        {
-            if (Vector3.Distance(used, worldMagnetPosition) < 1f)
-            {
-                Debug.Log("Magnet position is occupied. Skipping spawn.");
-                return;
-            }
-        }
+        if (IsPositionNearOther(worldMagnetPosition, 1.5f)) return;
 
         Instantiate(magnetPrefab, worldMagnetPosition, Quaternion.identity, transform);
+        usedPositions.Add(worldMagnetPosition);
         tilesSinceLastMagnet = 0;
     }
-
 
     private bool ShouldSpawnObstacle()
     {
@@ -158,6 +154,16 @@ public class GroundTile : MonoBehaviour
             return true;
         }
 
+        return false;
+    }
+
+    private bool IsPositionNearOther(Vector3 position, float minDistance)
+    {
+        foreach (Vector3 used in usedPositions)
+        {
+            if (Vector3.Distance(used, position) < minDistance)
+                return true;
+        }
         return false;
     }
 }
